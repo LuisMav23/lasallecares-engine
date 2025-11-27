@@ -209,8 +209,13 @@ def fetch_data():
         }
 
         results_path = upload_results(results)
-        if not insert_result_record(uuid, record_name, user, form_type) or not results_path:
-            abort(500, description='Failed to insert result record')
+        if not results_path:
+            app.logger.error(f"Failed to upload results file for UUID: {uuid}")
+            abort(500, description='Failed to upload results file')
+        
+        if not insert_result_record(uuid, record_name, user, form_type):
+            app.logger.error(f"Failed to insert result record - UUID: {uuid}, Name: {record_name}, User: {user}, Type: {form_type}")
+            abort(500, description=f'Failed to insert result record. Check logs for details. User: {user}')
 
         return jsonify({'message': 'File uploaded and processed successfully', 'data': results}), 200
     except ValueError as e:
