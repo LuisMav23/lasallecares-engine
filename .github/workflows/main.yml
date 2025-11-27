@@ -26,3 +26,4 @@ jobs:
             chmod +x build.sh run.sh
             ./build.sh
             ./run.sh
+            echo "Deployment complete"
