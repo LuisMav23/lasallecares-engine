@@ -220,10 +220,26 @@ def insert_result_record(uuid, name, username, record_type):
         cursor.close()
         close_db_connection(conn)
         return True
+    except mysql.connector.IntegrityError as err:
+        print(f"MySQL Integrity Error inserting record: {err}")
+        print(f"  UUID: {uuid}, Name: {name}, Username: {username}, Type: {record_type}")
+        if 'conn' in locals():
+            conn.rollback()
+            close_db_connection(conn)
+        return False
     except mysql.connector.Error as err:
-        print("MySQL Error:", err)
-        conn.rollback()
-        close_db_connection(conn)
+        print(f"MySQL Error inserting record: {err}")
+        print(f"  UUID: {uuid}, Name: {name}, Username: {username}, Type: {record_type}")
+        if 'conn' in locals():
+            conn.rollback()
+            close_db_connection(conn)
+        return False
+    except Exception as e:
+        print(f"Unexpected error inserting record: {e}")
+        print(f"  UUID: {uuid}, Name: {name}, Username: {username}, Type: {record_type}")
+        if 'conn' in locals():
+            conn.rollback()
+            close_db_connection(conn)
         return False
 
 
