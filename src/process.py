@@ -199,23 +199,55 @@ def upload_results(results):
     form_type = results['type']
     root_save_folder = 'persisted/results'
 
-    # Create root directory if it doesn't exist
-    if not os.path.exists(root_save_folder):
-        os.makedirs(root_save_folder, exist_ok=True)
-
-    # Create type-specific directory if it doesn't exist
-    type_save_folder = os.path.join(root_save_folder, form_type)
-    if not os.path.exists(type_save_folder):
-        os.makedirs(type_save_folder, exist_ok=True)
-
-    file_path = os.path.join(type_save_folder, f'{id}.json')
-    
     try:
+        # Create root directory if it doesn't exist
+        if not os.path.exists(root_save_folder):
+            os.makedirs(root_save_folder, exist_ok=True)
+            print(f"Created directory: {root_save_folder}")
+
+        # Create type-specific directory if it doesn't exist
+        type_save_folder = os.path.join(root_save_folder, form_type)
+        if not os.path.exists(type_save_folder):
+            os.makedirs(type_save_folder, exist_ok=True)
+            print(f"Created directory: {type_save_folder}")
+
+        file_path = os.path.join(type_save_folder, f'{id}.json')
+        
+        # Check write permissions
+        if not os.access(os.path.dirname(file_path), os.W_OK):
+            error_msg = f"ERROR: No write permission to directory: {os.path.dirname(file_path)}"
+            print(error_msg)
+            return None
+        
+        # Check if directory exists
+        if not os.path.exists(os.path.dirname(file_path)):
+            error_msg = f"ERROR: Directory does not exist: {os.path.dirname(file_path)}"
+            print(error_msg)
+            return None
+        
+        print(f"Attempting to save results to: {file_path}")
         with open(file_path, 'w', encoding='utf-8') as f:
             json.dump(results, f, ensure_ascii=False, indent=4)
+        
+        print(f"Successfully saved results to: {file_path}")
         return file_path
+    except PermissionError as e:
+        error_msg = f"ERROR: Permission denied saving results: {e}"
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+        return None
+    except OSError as e:
+        error_msg = f"ERROR: OS error saving results: {e}"
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
+        return None
     except Exception as e:
-        print(f"Error saving results: {e}")
+        error_msg = f"ERROR: Unexpected error saving results: {e}"
+        print(error_msg)
+        import traceback
+        traceback.print_exc()
         return None
 
 def summarize_answers(uuid, form_type, gender, grade, cluster):

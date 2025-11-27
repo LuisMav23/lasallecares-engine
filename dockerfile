@@ -13,12 +13,22 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Copy and set up entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expose port (change if your app uses a different port)
 EXPOSE 5000
+
+# Create volume for persisted data
+VOLUME ["/app/persisted"]
 
 # Set environment variables (optional)
 ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
 
 # Run the Flask app
 CMD ["python", "app.py"]
