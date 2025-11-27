@@ -15,6 +15,7 @@ echo "Starting container: $CONTAINER_NAME"
 docker run -d \
     --name $CONTAINER_NAME \
     -p 5000:5000 \
+    -v $(pwd)/persisted:/app/persisted \
     guidance-app:latest
 
 echo "Container $CONTAINER_NAME is running on port 5000"
