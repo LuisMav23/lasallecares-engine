@@ -22,7 +22,7 @@ jobs:
           script: |
             set -e
             cd ~/lasallecares-engine || exit 1
-            chmod +x build.sh run.sh || true
             git pull origin main
+            chmod +x build.sh run.sh
             ./build.sh
             ./run.sh
