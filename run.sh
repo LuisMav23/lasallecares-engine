@@ -10,12 +10,23 @@ if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
     docker rm $CONTAINER_NAME
 fi
 
+# Volume name for persisted data
+VOLUME_NAME="guidance-app-data"
+
+# Create volume if it doesn't exist
+if [ ! "$(docker volume ls -q -f name=$VOLUME_NAME)" ]; then
+    echo "Creating volume: $VOLUME_NAME"
+    docker volume create $VOLUME_NAME
+fi
+
 # Run the container
 echo "Starting container: $CONTAINER_NAME"
 docker run -d \
     --name $CONTAINER_NAME \
-    -p 5000:5000 \
+    -p 127.0.0.1:5000:5000 \
+    -v $VOLUME_NAME:/app/persisted \
     guidance-app:latest
 
-echo "Container $CONTAINER_NAME is running on port 5000"
+echo "Container $CONTAINER_NAME is running on localhost:5000"
+echo "Persisted data is stored in Docker volume: $VOLUME_NAME"
 
