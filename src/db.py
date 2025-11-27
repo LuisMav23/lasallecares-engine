@@ -1,14 +1,10 @@
 import os
-import logging
 import pandas as pd
 import numpy as np
 import mysql.connector
 from mysql.connector import errorcode
 from dotenv import load_dotenv
 load_dotenv()
-
-# Set up logger
-logger = logging.getLogger(__name__)
 
 # Database configuration - customize via environment variables
 DB_CONFIG = {
@@ -211,28 +207,8 @@ def delete_user(user_id):
         return False
 
 
-def user_exists(username):
-    """Check if a user exists in the database."""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM users WHERE username = %s", (username,))
-        count = cursor.fetchone()[0]
-        cursor.close()
-        close_db_connection(conn)
-        return count > 0
-    except mysql.connector.Error as err:
-        logger.error(f"Error checking if user exists: {err}")
-        return False
-
-
 def insert_result_record(uuid, name, username, record_type):
     """Inserts a record for a user."""
-    # Check if user exists first
-    if not user_exists(username):
-        logger.error(f"User '{username}' does not exist in database. Cannot insert record.")
-        return False
-    
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -244,33 +220,10 @@ def insert_result_record(uuid, name, username, record_type):
         cursor.close()
         close_db_connection(conn)
         return True
-    except mysql.connector.IntegrityError as err:
-        if err.errno == 1062:  # Duplicate entry
-            logger.error(f"Duplicate UUID: {uuid} already exists in records")
-        elif err.errno == 1452:  # Foreign key constraint
-            logger.error(f"Foreign key constraint failed: User '{username}' does not exist")
-        else:
-            logger.error(f"MySQL Integrity Error inserting result record: {err}")
-        logger.error(f"Failed to insert record - UUID: {uuid}, Name: {name}, Username: {username}, Type: {record_type}")
-        print(f"MySQL Integrity Error: {err}")
-        if 'conn' in locals():
-            conn.rollback()
-            close_db_connection(conn)
-        return False
     except mysql.connector.Error as err:
-        logger.error(f"MySQL Error inserting result record: {err}")
-        logger.error(f"Failed to insert record - UUID: {uuid}, Name: {name}, Username: {username}, Type: {record_type}")
-        print(f"MySQL Error: {err}")
-        if 'conn' in locals():
-            conn.rollback()
-            close_db_connection(conn)
-        return False
-    except Exception as e:
-        logger.error(f"Unexpected error inserting result record: {e}")
-        print(f"Unexpected Error: {e}")
-        if 'conn' in locals():
-            conn.rollback()
-            close_db_connection(conn)
+        print("MySQL Error:", err)
+        conn.rollback()
+        close_db_connection(conn)
         return False
 
 

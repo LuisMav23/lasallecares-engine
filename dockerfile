@@ -16,9 +16,6 @@ COPY . .
 # Expose port (change if your app uses a different port)
 EXPOSE 5000
 
-# Create volume for persisted data
-VOLUME ["/app/persisted"]
-
 # Set environment variables (optional)
 ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
