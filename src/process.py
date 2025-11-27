@@ -194,58 +194,50 @@ def upload_student_data(df, id, form_type):
 
     return file_path
 
+def convert_numpy_types(obj):
+    """Recursively convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, (np.str_, np.unicode_)):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {str(k) if isinstance(k, (np.str_, np.unicode_)) else convert_numpy_types(k): convert_numpy_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_numpy_types(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_numpy_types(item) for item in obj)
+    else:
+        return obj
+
 def upload_results(results):
     id = results['id']
     form_type = results['type']
     root_save_folder = 'persisted/results'
 
+    # Create root directory if it doesn't exist
+    if not os.path.exists(root_save_folder):
+        os.makedirs(root_save_folder, exist_ok=True)
+
+    # Create type-specific directory if it doesn't exist
+    type_save_folder = os.path.join(root_save_folder, form_type)
+    if not os.path.exists(type_save_folder):
+        os.makedirs(type_save_folder, exist_ok=True)
+
+    file_path = os.path.join(type_save_folder, f'{id}.json')
+    
     try:
-        # Create root directory if it doesn't exist
-        if not os.path.exists(root_save_folder):
-            os.makedirs(root_save_folder, exist_ok=True)
-            print(f"Created directory: {root_save_folder}")
-
-        # Create type-specific directory if it doesn't exist
-        type_save_folder = os.path.join(root_save_folder, form_type)
-        if not os.path.exists(type_save_folder):
-            os.makedirs(type_save_folder, exist_ok=True)
-            print(f"Created directory: {type_save_folder}")
-
-        file_path = os.path.join(type_save_folder, f'{id}.json')
+        # Convert all numpy types to native Python types before JSON serialization
+        results_serializable = convert_numpy_types(results)
         
-        # Check write permissions
-        if not os.access(os.path.dirname(file_path), os.W_OK):
-            error_msg = f"ERROR: No write permission to directory: {os.path.dirname(file_path)}"
-            print(error_msg)
-            return None
-        
-        # Check if directory exists
-        if not os.path.exists(os.path.dirname(file_path)):
-            error_msg = f"ERROR: Directory does not exist: {os.path.dirname(file_path)}"
-            print(error_msg)
-            return None
-        
-        print(f"Attempting to save results to: {file_path}")
         with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(results, f, ensure_ascii=False, indent=4)
-        
-        print(f"Successfully saved results to: {file_path}")
+            json.dump(results_serializable, f, ensure_ascii=False, indent=4)
         return file_path
-    except PermissionError as e:
-        error_msg = f"ERROR: Permission denied saving results: {e}"
-        print(error_msg)
-        import traceback
-        traceback.print_exc()
-        return None
-    except OSError as e:
-        error_msg = f"ERROR: OS error saving results: {e}"
-        print(error_msg)
-        import traceback
-        traceback.print_exc()
-        return None
     except Exception as e:
-        error_msg = f"ERROR: Unexpected error saving results: {e}"
-        print(error_msg)
+        print(f"Error saving results: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -274,7 +266,9 @@ def summarize_answers(uuid, form_type, gender, grade, cluster):
         
     for column in df.columns:
         if column not in ['Name', 'Grade', 'Gender']:
-            summary[column] = df[column].value_counts().to_dict()
+            # Convert value_counts to dict and ensure all values are native Python types
+            counts = df[column].value_counts().to_dict()
+            summary[column] = {str(k): int(v) for k, v in counts.items()}
     
     return summary
 

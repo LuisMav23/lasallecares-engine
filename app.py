@@ -198,8 +198,8 @@ def fetch_data():
             'type': form_type,
             'data_summary': {
                 'answers_summary': summary,
-                'pca_summary': {'optimal_pc': optimal_pc},
-                'cluster_summary': {'optimal_k': optimal_k, 'cluster_count': cluster_count},
+                'pca_summary': {'optimal_pc': int(optimal_pc) if optimal_pc is not None else None},
+                'cluster_summary': {'optimal_k': int(optimal_k) if optimal_k is not None else None, 'cluster_count': int(cluster_count) if cluster_count is not None else None},
                 'risk_rating_summary': {
                     'model_name': risk_prediction['model_name'],
                     'risk_distribution': risk_prediction['risk_distribution'],
@@ -209,13 +209,8 @@ def fetch_data():
         }
 
         results_path = upload_results(results)
-        if not results_path:
-            app.logger.error(f"Failed to upload results file for UUID: {uuid}")
-            abort(500, description='Failed to upload results file')
-        
-        if not insert_result_record(uuid, record_name, user, form_type):
-            app.logger.error(f"Failed to insert result record - UUID: {uuid}, Name: {record_name}, User: {user}, Type: {form_type}")
-            abort(500, description=f'Failed to insert result record. Check logs for details. User: {user}')
+        if not insert_result_record(uuid, record_name, user, form_type) or not results_path:
+            abort(500, description='Failed to insert result record')
 
         return jsonify({'message': 'File uploaded and processed successfully', 'data': results}), 200
     except ValueError as e:
