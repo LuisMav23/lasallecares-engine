@@ -38,6 +38,12 @@ def predict_risk_rating(df: pd.DataFrame) -> dict:
     Predict risk rating for new student data using pre-trained model.
     Only supports ASSI-A form type.
     
+    Matches the exact preprocessing steps from classifier-models.ipynb:
+    1. Drop StudentNumber and RiskRating (matching notebook line 93)
+    2. Encode Gender using LabelEncoder (matching notebook line 98)
+    3. Scale features using StandardScaler (matching notebook line 154)
+    4. Make predictions
+    
     Args:
         df: DataFrame with student data (including Gender, GradeLevel, and question responses)
     
@@ -49,53 +55,35 @@ def predict_risk_rating(df: pd.DataFrame) -> dict:
     # Load pre-trained model
     model = load_risk_rating_model()
     
-    # Prepare features - match training data preprocessing exactly
-    # Drop 'StudentNumber', 'RiskRating', and 'Name' (if present)
-    # Training data has: Gender, GradeLevel, Q1-Q28 (30 features total)
-    cols_to_drop = ['StudentNumber', 'RiskRating', 'Name']
-    X_new = df.drop(columns=[col for col in cols_to_drop if col in df.columns])
+    # Prepare features - match training data preprocessing exactly as in notebook
+    # Step 1: Drop StudentNumber and RiskRating (matching notebook line 93)
+    X_new = df.drop(['StudentNumber', 'RiskRating'], axis=1, errors='ignore')
     
-    # Standardize column names - Grade vs GradeLevel
+    # Standardize column names - Grade vs GradeLevel (for compatibility)
     if 'Grade' in X_new.columns and 'GradeLevel' not in X_new.columns:
         X_new = X_new.rename(columns={'Grade': 'GradeLevel'})
     
-    # Ensure we only have the expected features: Gender, GradeLevel, Q1-Q28
-    # Get expected columns (Gender, GradeLevel, Q1-Q28)
-    expected_cols = ['Gender', 'GradeLevel'] + [f'Q{i}' for i in range(1, 29)]
+    # Drop Name if present (not in original training data)
+    if 'Name' in X_new.columns:
+        X_new = X_new.drop(columns=['Name'])
     
-    # Check for missing or extra columns
-    missing_cols = [col for col in expected_cols if col not in X_new.columns]
-    extra_cols = [col for col in X_new.columns if col not in expected_cols]
-    
-    if missing_cols:
-        print(f"Warning: Missing expected columns: {missing_cols}")
-        # Add missing columns with zeros
-        for col in missing_cols:
-            X_new[col] = 0
-    
-    if extra_cols:
-        print(f"Warning: Extra columns found (will be dropped): {extra_cols}")
-        X_new = X_new[expected_cols]
-    else:
-        # Ensure columns are in the correct order
-        X_new = X_new[expected_cols]
-    
-    print(f"Features shape before encoding: {X_new.shape}")
+    print(f"Features shape after dropping columns: {X_new.shape}")
     print(f"Columns: {X_new.columns.tolist()}")
     
-    # Encode Gender using LabelEncoder
+    # Step 2: Encode categorical variables (Gender) - matching notebook line 98
     label_encoder_gender = LabelEncoder()
     if 'Gender' in X_new.columns:
         X_new['Gender'] = label_encoder_gender.fit_transform(X_new['Gender'])
         print("Encoded Gender using LabelEncoder")
+    else:
+        raise ValueError("Gender column is required but not found in the data")
     
-    # Scale features using StandardScaler
+    # Step 3: Scale features using StandardScaler - matching notebook line 154
     scaler = StandardScaler()
     X_new_scaled = scaler.fit_transform(X_new)
     print(f"Scaled features using StandardScaler. Shape: {X_new_scaled.shape}")
-    print(f"Expected model input shape: (batch_size, 30)")
     
-    # Make predictions using the loaded Neural Network model
+    # Step 4: Make predictions using the loaded Neural Network model
     predictions_proba = model.predict(X_new_scaled, verbose=0)
     predictions_encoded = np.argmax(predictions_proba, axis=1)
     
