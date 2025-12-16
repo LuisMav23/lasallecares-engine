@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Container name
-CONTAINER_NAME="guidance-app"
+CONTAINER_NAME="server"
 
 # Stop and remove any existing container with the same name
 if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
@@ -16,7 +16,7 @@ docker run -d \
     --name $CONTAINER_NAME \
     -p 5000:5000 \
     -v $(pwd)/persisted:/app/persisted \
-    guidance-app:latest
+    server:latest
 
 echo "Container $CONTAINER_NAME is running on port 5000"
 

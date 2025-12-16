@@ -1,5 +1,5 @@
 #!/bin/bash
 
 # Build the Docker image
-docker build -t guidance-app:latest -f dockerfile .
+docker build -t server:latest -f dockerfile .
 
