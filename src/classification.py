@@ -7,7 +7,7 @@ Uses pre-trained TensorFlow model to predict RiskRating for new student data.
 import pandas as pd
 import numpy as np
 from tensorflow.keras.models import load_model
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 # Global cache for loaded models
 _LOADED_MODELS = {}
@@ -39,7 +39,7 @@ def predict_risk_rating(df: pd.DataFrame) -> dict:
     Only supports ASSI-A form type.
     
     Args:
-        df: DataFrame with student data (including Name, Gender, GradeLevel, and question responses)
+        df: DataFrame with student data (including Gender, GradeLevel, and question responses)
     
     Returns:
         Dictionary with predictions and model info
@@ -50,36 +50,35 @@ def predict_risk_rating(df: pd.DataFrame) -> dict:
     model = load_risk_rating_model()
     
     # Prepare features - match training data preprocessing exactly
-    df_features = df.copy()
+    # Drop 'StudentNumber' and 'RiskRating' (if present)
+    X_new = df.drop(['StudentNumber', 'RiskRating'], axis=1, errors='ignore')
     
     # Standardize column names - Grade vs GradeLevel
-    if 'Grade' in df_features.columns and 'GradeLevel' not in df_features.columns:
-        df_features = df_features.rename(columns={'Grade': 'GradeLevel'})
+    if 'Grade' in X_new.columns and 'GradeLevel' not in X_new.columns:
+        X_new = X_new.rename(columns={'Grade': 'GradeLevel'})
     
-    # Drop non-feature columns - match training preprocessing
-    # Training drops: StudentNumber and RiskRating
-    cols_to_drop = ['StudentNumber', 'RiskRating', 'Name']  # Drop Name if present (for compatibility)
-    X = df_features.drop(columns=[col for col in cols_to_drop if col in df_features.columns])
+    # Encode Gender using LabelEncoder
+    label_encoder_gender = LabelEncoder()
+    if 'Gender' in X_new.columns:
+        X_new['Gender'] = label_encoder_gender.fit_transform(X_new['Gender'])
+        print("Encoded Gender using LabelEncoder")
     
-    # Encode Gender using LabelEncoder (matching training preprocessing)
-    if 'Gender' in X.columns and X['Gender'].dtype == object:
-        label_encoder_gender = LabelEncoder()
-        X['Gender'] = label_encoder_gender.fit_transform(X['Gender'])
+    # Scale features using StandardScaler
+    scaler = StandardScaler()
+    X_new_scaled = scaler.fit_transform(X_new)
+    print(f"Scaled features using StandardScaler. Shape: {X_new_scaled.shape}")
     
-    # Convert to numpy array for prediction
-    X_array = X.values.astype(np.float32)
-    
-    # Predict
-    predictions_prob = model.predict(X_array, verbose=0)
-    predictions = np.argmax(predictions_prob, axis=1)
-    
-    # Get prediction confidence (max probability)
-    confidence = np.max(predictions_prob, axis=1)
+    # Make predictions using the loaded Neural Network model
+    predictions_proba = model.predict(X_new_scaled, verbose=0)
+    predictions_encoded = np.argmax(predictions_proba, axis=1)
     
     # Map predictions to risk levels (assuming standard risk rating classes)
-    # If model outputs numeric predictions, map them to labels
-    risk_levels = ['Low', 'Medium', 'High']  # Default risk levels
-    predictions_labels = [risk_levels[pred] if pred < len(risk_levels) else f'Level_{pred}' for pred in predictions]
+    # Since we don't have label_encoder_target, we'll use default mapping
+    risk_levels = ['Low', 'Medium', 'High']
+    predictions_labels = [risk_levels[pred] if pred < len(risk_levels) else f'Level_{pred}' for pred in predictions_encoded]
+    
+    # Get prediction confidence (max probability)
+    confidence = np.max(predictions_proba, axis=1)
     
     # Count predictions by risk level
     unique, counts = np.unique(predictions_labels, return_counts=True)
