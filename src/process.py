@@ -155,26 +155,17 @@ def upload_file(file, id, form_type):
         f.write(csv_content)
     df = pd.read_csv(file_path)
     
-    # Check if Name column exists, if not create it from StudentNumber or index
-    # This must be done BEFORE any code tries to access df['Name']
+    # Check if Name column exists, if not create it
     if 'Name' not in df.columns:
+        # Create Name column from StudentNumber or index
         if 'StudentNumber' in df.columns:
-            # Create Name column from StudentNumber (matching training data format)
-            df['Name'] = 'Student' + df['StudentNumber'].astype(str)
-            print(f"Created 'Name' column from 'StudentNumber' ({len(df)} rows)")
+            df['Name'] = df['StudentNumber'].astype(str)
+            print("Created 'Name' column from 'StudentNumber'")
         else:
-            # Fallback: create Name from index
             df['Name'] = [f'Student{i+1}' for i in range(len(df))]
-            print(f"Created 'Name' column from index ({len(df)} rows)")
-    else:
-        # Ensure Name is string type
-        df['Name'] = df['Name'].astype(str)
-        print(f"Name column already exists ({len(df)} rows)")
+            print("Created 'Name' column from index")
     
-    # Ensure Name column is string type (in case it was created above)
     df['Name'] = df['Name'].astype(str)
-    
-    # Save the updated dataframe
     df.to_csv(file_path, index=False)
     return file_path
 
@@ -211,10 +202,10 @@ def convert_numpy_types(obj):
         return float(obj)
     elif isinstance(obj, np.ndarray):
         return obj.tolist()
-    elif isinstance(obj, (np.str_, np.unicode_)):
+    elif isinstance(obj, np.str_):
         return str(obj)
     elif isinstance(obj, dict):
-        return {str(k) if isinstance(k, (np.str_, np.unicode_)) else convert_numpy_types(k): convert_numpy_types(v) for k, v in obj.items()}
+        return {str(k) if isinstance(k, np.str_) else convert_numpy_types(k): convert_numpy_types(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [convert_numpy_types(item) for item in obj]
     elif isinstance(obj, tuple):
@@ -329,20 +320,6 @@ def summarize_answer_per_cluster(df_clustered, form_type):
 def load_data_and_preprocess(file_path, form_type):
     # Full DataFrame
     df = pd.read_csv(file_path)
-    
-    # Ensure Name column exists (should have been created by upload_file, but check anyway)
-    if 'Name' not in df.columns:
-        if 'StudentNumber' in df.columns:
-            df['Name'] = 'Student' + df['StudentNumber'].astype(str)
-            print(f"Created 'Name' column from 'StudentNumber' in load_data_and_preprocess")
-        else:
-            df['Name'] = [f'Student{i+1}' for i in range(len(df))]
-            print(f"Created 'Name' column from index in load_data_and_preprocess")
-    
-    # Drop StudentNumber if present (we have Name now, and classification.py expects to drop StudentNumber)
-    if 'StudentNumber' in df.columns:
-        df = df.drop(columns=['StudentNumber'])
-        print("Dropped 'StudentNumber' column (using 'Name' instead)")
     
     # Map question columns to Q1-Q28 format if they're in full text format
     # This ensures compatibility with pre-trained models
