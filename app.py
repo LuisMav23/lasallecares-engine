@@ -181,8 +181,8 @@ def fetch_data():
         if df_pca is None:
             abort(500, description='Failed to predict clusters. Check that uploaded data matches expected format.')
         
-        # Predict risk ratings using pre-trained TensorFlow model
-        risk_prediction = predict_risk_rating(df, form_type)
+        # Predict risk ratings using pre-trained TensorFlow model (ASSI-A only)
+        risk_prediction = predict_risk_rating(df)
         
         # Add risk rating predictions to the dataframe
         df_pca['RiskRating'] = risk_prediction['predictions']
