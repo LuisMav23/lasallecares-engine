@@ -199,7 +199,10 @@ def fetch_data():
             'data_summary': {
                 'answers_summary': summary,
                 'pca_summary': {'optimal_pc': int(optimal_pc) if optimal_pc is not None else None},
-                'cluster_summary': {'optimal_k': int(optimal_k) if optimal_k is not None else None, 'cluster_count': int(cluster_count) if cluster_count is not None else None},
+                'cluster_summary': {
+                    'optimal_k': int(optimal_k) if optimal_k is not None else None,
+                    'cluster_count': cluster_count if cluster_count is not None else {}
+                },
                 'risk_rating_summary': {
                     'model_name': risk_prediction['model_name'],
                     'risk_distribution': risk_prediction['risk_distribution'],
