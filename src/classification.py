@@ -50,12 +50,38 @@ def predict_risk_rating(df: pd.DataFrame) -> dict:
     model = load_risk_rating_model()
     
     # Prepare features - match training data preprocessing exactly
-    # Drop 'StudentNumber' and 'RiskRating' (if present)
-    X_new = df.drop(['StudentNumber', 'RiskRating'], axis=1, errors='ignore')
+    # Drop 'StudentNumber', 'RiskRating', and 'Name' (if present)
+    # Training data has: Gender, GradeLevel, Q1-Q28 (30 features total)
+    cols_to_drop = ['StudentNumber', 'RiskRating', 'Name']
+    X_new = df.drop(columns=[col for col in cols_to_drop if col in df.columns])
     
     # Standardize column names - Grade vs GradeLevel
     if 'Grade' in X_new.columns and 'GradeLevel' not in X_new.columns:
         X_new = X_new.rename(columns={'Grade': 'GradeLevel'})
+    
+    # Ensure we only have the expected features: Gender, GradeLevel, Q1-Q28
+    # Get expected columns (Gender, GradeLevel, Q1-Q28)
+    expected_cols = ['Gender', 'GradeLevel'] + [f'Q{i}' for i in range(1, 29)]
+    
+    # Check for missing or extra columns
+    missing_cols = [col for col in expected_cols if col not in X_new.columns]
+    extra_cols = [col for col in X_new.columns if col not in expected_cols]
+    
+    if missing_cols:
+        print(f"Warning: Missing expected columns: {missing_cols}")
+        # Add missing columns with zeros
+        for col in missing_cols:
+            X_new[col] = 0
+    
+    if extra_cols:
+        print(f"Warning: Extra columns found (will be dropped): {extra_cols}")
+        X_new = X_new[expected_cols]
+    else:
+        # Ensure columns are in the correct order
+        X_new = X_new[expected_cols]
+    
+    print(f"Features shape before encoding: {X_new.shape}")
+    print(f"Columns: {X_new.columns.tolist()}")
     
     # Encode Gender using LabelEncoder
     label_encoder_gender = LabelEncoder()
@@ -67,6 +93,7 @@ def predict_risk_rating(df: pd.DataFrame) -> dict:
     scaler = StandardScaler()
     X_new_scaled = scaler.fit_transform(X_new)
     print(f"Scaled features using StandardScaler. Shape: {X_new_scaled.shape}")
+    print(f"Expected model input shape: (batch_size, 30)")
     
     # Make predictions using the loaded Neural Network model
     predictions_proba = model.predict(X_new_scaled, verbose=0)
