@@ -6,7 +6,7 @@ Uses pre-trained TensorFlow model to predict RiskRating for new student data.
 
 import pandas as pd
 import numpy as np
-import pickle
+import joblib
 import os
 from tensorflow.keras.models import load_model
 from sklearn.preprocessing import StandardScaler, LabelEncoder
@@ -36,16 +36,11 @@ def load_risk_rating_resources(model_path='models/risk_rating_nn_model.h5', tran
     print(f"Loading transformers from {transformers_dir}...")
     transformers = {}
     
-    # Load transformers
+    # Load transformers using joblib (sklearn saves with joblib internally)
     try:
-        with open(os.path.join(transformers_dir, 'label_encoder_gender.pkl'), 'rb') as f:
-            transformers['gender_encoder'] = pickle.load(f)
-            
-        with open(os.path.join(transformers_dir, 'label_encoder_target.pkl'), 'rb') as f:
-            transformers['target_encoder'] = pickle.load(f)
-            
-        with open(os.path.join(transformers_dir, 'scaler.pkl'), 'rb') as f:
-            transformers['scaler'] = pickle.load(f)
+        transformers['gender_encoder'] = joblib.load(os.path.join(transformers_dir, 'label_encoder_gender.pkl'))
+        transformers['target_encoder'] = joblib.load(os.path.join(transformers_dir, 'label_encoder_target.pkl'))
+        transformers['scaler'] = joblib.load(os.path.join(transformers_dir, 'scaler.pkl'))
             
         _LOADED_MODELS['transformers'] = transformers
         print("Transformers loaded successfully!")
