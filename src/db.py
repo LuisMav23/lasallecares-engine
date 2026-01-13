@@ -267,10 +267,15 @@ def delete_record(uuid):
 def get_student_data_by_uuid_and_name(uuid, name, form_type):
     try:
         df = pd.read_csv(os.path.join('persisted', 'student_data', form_type, f'{uuid}.csv'))
-        df['Name'] = df['Name'].astype(str)
+        # Determine search column: Name or StudentNumber
+        search_col = 'Name' if 'Name' in df.columns else 'StudentNumber'
+        if search_col not in df.columns:
+            return None
+
+        df[search_col] = df[search_col].astype(str)
         # Normalize comparison: strip and lower-case both sides
         target = str(name).strip().lower()
-        df['__name_norm'] = df['Name'].astype(str).str.strip().str.lower()
+        df['__name_norm'] = df[search_col].astype(str).str.strip().str.lower()
         df_match = df[df['__name_norm'] == target]
         if df_match.empty:
             return None
@@ -285,7 +290,7 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
                 return val
 
         result = {
-            'Name': row['Name'],
+            'Name': row[search_col],
             'Grade': int(row['Grade']) if not pd.isna(row['Grade']) else None,
             'Gender': row['Gender'],
             'Cluster': int(row['Cluster']) if not pd.isna(row['Cluster']) else None,
@@ -293,7 +298,7 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
             'RiskConfidence': float(row['RiskConfidence']) if 'RiskConfidence' in row and not pd.isna(row['RiskConfidence']) else None,
             'Questions': {
                 col: to_native(row[col])
-                for col in df.columns if col not in ['Name', 'Grade', 'Gender', 'Cluster', 'RiskRating', 'RiskConfidence', '__name_norm']
+                for col in df.columns if col not in [search_col, 'Grade', 'Gender', 'Cluster', 'RiskRating', 'RiskConfidence', '__name_norm']
             }
         }
         return result
