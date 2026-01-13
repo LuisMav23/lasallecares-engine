@@ -267,16 +267,13 @@ def delete_record(uuid):
 def get_student_data_by_uuid_and_name(uuid, name, form_type):
     try:
         df = pd.read_csv(os.path.join('persisted', 'student_data', form_type, f'{uuid}.csv'))
-        # Determine search column: Name or StudentNumber
         search_col = 'Name' if 'Name' in df.columns else 'StudentNumber'
+        name = str(name)
         if search_col not in df.columns:
             return None
 
         df[search_col] = df[search_col].astype(str)
-        # Normalize comparison: strip and lower-case both sides
-        target = str(name).strip().lower()
-        df['__name_norm'] = df[search_col].astype(str).str.strip().str.lower()
-        df_match = df[df['__name_norm'] == target]
+        df_match = df[df[search_col] == name]
         if df_match.empty:
             return None
 
