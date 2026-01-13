@@ -272,11 +272,11 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
         if search_col not in df.columns:
             return None
 
-        df_match = df[df[search_col] == name]
+        df_match = df[df[search_col] == name][0]
         if df_match.empty:
             return None
 
-        row = df_match.iloc[0]
+        row = df_match
 
         print(row)
         # Convert numpy types to native Python types for JSON serialization
