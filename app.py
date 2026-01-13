@@ -125,6 +125,8 @@ def delete_data_by_uuid(uuid):
 def get_student_data_by_name(uuid, form_type, name):
     """Get student data by UUID, form type, and name."""
     result = get_student_data_by_uuid_and_name(uuid, name, form_type)
+    if not result:
+        abort(404, description='Student not found')
     print(result)
     return jsonify(result), 200
 
