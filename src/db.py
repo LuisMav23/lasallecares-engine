@@ -268,7 +268,7 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
     try:
         df = pd.read_csv(os.path.join('persisted', 'student_data', form_type, f'{uuid}.csv'))
         search_col = 'Name' if 'Name' in df.columns else 'StudentNumber'
-        name = str(name)
+        name = 'Student' + str(name)
         if search_col not in df.columns:
             return None
 
