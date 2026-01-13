@@ -281,6 +281,8 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
             return None
 
         row = df_match.iloc[0]
+
+        print(row)
         # Convert numpy types to native Python types for JSON serialization
         def to_native(val):
             try:
@@ -301,6 +303,8 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
                 for col in df.columns if col not in [search_col, 'Grade', 'Gender', 'Cluster', 'RiskRating', 'RiskConfidence', '__name_norm']
             }
         }
+
+        print(result)
         return result
     except Exception as e:
         print("Error:", e)
