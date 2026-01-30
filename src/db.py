@@ -272,7 +272,7 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
             return None
             
         df = pd.read_csv(file_path)
-        search_col = 'Name'
+        search_col = 'StudentNumber'
         
         if search_col not in df.columns:
             print(f"Column '{search_col}' not found in CSV. Available columns: {df.columns.tolist()}")
@@ -280,8 +280,6 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
 
         # Prepare search name - handle both cases: name might already have 'Student' prefix or just be a number
         search_name = str(name)
-        if not search_name.startswith('Student'):
-            search_name = 'Student' + search_name
         
         print(f"Searching for student with name: '{search_name}'")
         print(f"Available names in CSV (first 10): {df[search_col].head(10).tolist()}")
