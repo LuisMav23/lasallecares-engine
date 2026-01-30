@@ -266,45 +266,73 @@ def delete_record(uuid):
 
 def get_student_data_by_uuid_and_name(uuid, name, form_type):
     try:
-        df = pd.read_csv(os.path.join('persisted', 'student_data', form_type, f'{uuid}.csv'))
+        file_path = os.path.join('persisted', 'student_data', form_type, f'{uuid}.csv')
+        if not os.path.exists(file_path):
+            print(f"File not found: {file_path}")
+            return None
+            
+        df = pd.read_csv(file_path)
         search_col = 'Name'
-        name = 'Student' + str(name)
+        
         if search_col not in df.columns:
+            print(f"Column '{search_col}' not found in CSV. Available columns: {df.columns.tolist()}")
             return None
 
-        df_match = df[df[search_col] == name][0]
+        # Prepare search name - handle both cases: name might already have 'Student' prefix or just be a number
+        search_name = str(name)
+        if not search_name.startswith('Student'):
+            search_name = 'Student' + search_name
+        
+        print(f"Searching for student with name: '{search_name}'")
+        print(f"Available names in CSV (first 10): {df[search_col].head(10).tolist()}")
+        
+        # Filter DataFrame to find matching rows
+        df_match = df[df[search_col] == search_name]
+        
         if df_match.empty:
+            print(f"No student found with name '{search_name}'")
             return None
 
-        row = df_match
+        # Get the first matching row
+        row = df_match.iloc[0]
 
-        print(row)
+        print(f"Found student: {row[search_col]}")
+        
         # Convert numpy types to native Python types for JSON serialization
         def to_native(val):
             try:
                 # If value is numpy type, convert to Python scalar
-                return int(val) if isinstance(val, (np.int64, np.int32)) else float(val) if isinstance(val, (np.float64, np.float32)) else val
+                if isinstance(val, (np.int64, np.int32, np.integer)):
+                    return int(val)
+                elif isinstance(val, (np.float64, np.float32, np.floating)):
+                    return float(val)
+                elif pd.isna(val):
+                    return None
+                else:
+                    return val
             except Exception:
                 return val
 
         result = {
-            'Name': row[search_col],
-            'Grade': int(row['Grade']) if not pd.isna(row['Grade']) else None,
-            'Gender': row['Gender'],
-            'Cluster': int(row['Cluster']) if not pd.isna(row['Cluster']) else None,
-            'RiskRating': row.get('RiskRating', None),
-            'RiskConfidence': float(row['RiskConfidence']) if 'RiskConfidence' in row and not pd.isna(row['RiskConfidence']) else None,
+            'Name': str(row[search_col]),
+            'Grade': int(row['Grade']) if 'Grade' in row and not pd.isna(row['Grade']) else None,
+            'Gender': str(row['Gender']) if 'Gender' in row else None,
+            'Cluster': int(row['Cluster']) if 'Cluster' in row and not pd.isna(row['Cluster']) else None,
+            'RiskRating': str(row['RiskRating']) if 'RiskRating' in row and not pd.isna(row.get('RiskRating')) else None,
+            'RiskConfidence': float(row['RiskConfidence']) if 'RiskConfidence' in row and not pd.isna(row.get('RiskConfidence')) else None,
             'Questions': {
                 col: to_native(row[col])
-                for col in df.columns if col not in [search_col, 'Grade', 'Gender', 'Cluster', 'RiskRating', 'RiskConfidence', '__name_norm']
+                for col in df.columns if col not in [search_col, 'Grade', 'Gender', 'Cluster', 'RiskRating', 'RiskConfidence', '__name_norm', 'GradeLevel']
             }
         }
 
-        print(result)
+        print(f"Returning result for student: {result['Name']}")
         return result
     except Exception as e:
-        print("Error:", e)
-        return False
+        print(f"Error in get_student_data_by_uuid_and_name: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 def update_student_cluster(uuid, name, cluster, form_type):
