@@ -285,14 +285,14 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
         print(f"Available names in CSV (first 10): {df[search_col].head(10).tolist()}")
         
         # Filter DataFrame to find matching rows
-        df_match = df[df[search_col] == search_name]
+        df_match = df[df[search_col].eq(search_name)]
         
         if df_match.empty:
             print(f"No student found with name '{search_name}'")
             return None
 
         # Get the first matching row
-        row = df_match.iloc[0]
+        row = df_match.iloc[0] if not df_match.empty else None
 
         print(f"Found student: {row[search_col]}")
         
