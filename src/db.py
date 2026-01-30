@@ -269,37 +269,23 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
         file_path = os.path.join('persisted', 'student_data', form_type, f'{uuid}.csv')
         if not os.path.exists(file_path):
             print(f"File not found: {file_path}")
-            return None
-            
+            return
         df = pd.read_csv(file_path)
         search_col = 'StudentNumber'
-        
         if search_col not in df.columns:
             print(f"Column '{search_col}' not found in CSV. Available columns: {df.columns.tolist()}")
-            return None
-
-        # Prepare search name - handle both cases: name might already have 'Student' prefix or just be a number
+            return
         search_name = str(name)
-        
         print(f"Searching for student with name: '{search_name}'")
         print(f"Available names in CSV (first 10): {df[search_col].head(10).tolist()}")
-        
-        # Filter DataFrame to find matching rows
         df_match = df[df[search_col].eq(search_name)]
-        
         if df_match.empty:
             print(f"No student found with name '{search_name}'")
-            return None
-
-        # Get the first matching row
+            return
         row = df_match.iloc[0] if not df_match.empty else None
-
         print(f"Found student: {row[search_col]}")
-        
-        # Convert numpy types to native Python types for JSON serialization
         def to_native(val):
             try:
-                # If value is numpy type, convert to Python scalar
                 if isinstance(val, (np.int64, np.int32, np.integer)):
                     return int(val)
                 elif isinstance(val, (np.float64, np.float32, np.floating)):
@@ -310,7 +296,6 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
                     return val
             except Exception:
                 return val
-
         result = {
             'Name': str(row[search_col]),
             'Grade': int(row['Grade']) if 'Grade' in row and not pd.isna(row['Grade']) else None,
@@ -323,14 +308,14 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
                 for col in df.columns if col not in [search_col, 'Grade', 'Gender', 'Cluster', 'RiskRating', 'RiskConfidence', '__name_norm', 'GradeLevel']
             }
         }
-
         print(f"Returning result for student: {result['Name']}")
-        return result
+        # Don't return anything (not returning anything)
+        return
     except Exception as e:
         print(f"Error in get_student_data_by_uuid_and_name: {e}")
         import traceback
         traceback.print_exc()
-        return None
+        return
 
 
 def update_student_cluster(uuid, name, cluster, form_type):
