@@ -309,8 +309,7 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
             }
         }
         print(f"Returning result for student: {result['Name']}")
-        # Don't return anything (not returning anything)
-        return
+        return result
     except Exception as e:
         print(f"Error in get_student_data_by_uuid_and_name: {e}")
         import traceback
