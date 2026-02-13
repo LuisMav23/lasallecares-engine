@@ -278,7 +278,8 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
         search_name = str(name)
         print(f"Searching for student with name: '{search_name}'")
         print(f"Available names in CSV (first 10): {df[search_col].head(10).tolist()}")
-        df_match = df[df[search_col].eq(search_name)]
+        # Compare as strings to avoid type mismatch (CSV may store as int)
+        df_match = df[df[search_col].astype(str).eq(search_name)]
         if df_match.empty:
             print(f"No student found with name '{search_name}'")
             return
@@ -298,7 +299,7 @@ def get_student_data_by_uuid_and_name(uuid, name, form_type):
                 return val
         result = {
             'Name': str(row[search_col]),
-            'Grade': int(row['Grade']) if 'Grade' in row and not pd.isna(row['Grade']) else None,
+            'Grade': int(row['GradeLevel']) if 'GradeLevel' in row and not pd.isna(row['GradeLevel']) else (int(row['Grade']) if 'Grade' in row and not pd.isna(row['Grade']) else None),
             'Gender': str(row['Gender']) if 'Gender' in row else None,
             'Cluster': int(row['Cluster']) if 'Cluster' in row and not pd.isna(row['Cluster']) else None,
             'RiskRating': str(row['RiskRating']) if 'RiskRating' in row and not pd.isna(row.get('RiskRating')) else None,
