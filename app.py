@@ -1,8 +1,10 @@
 import os
 import hashlib
 from uuid import uuid4
+from datetime import timedelta
 from flask import Flask, request, jsonify, send_file, abort
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 from src.process import (
     validate_dataset, summarize_answers, upload_file, load_data_and_preprocess,
@@ -32,6 +34,11 @@ CORS(
     expose_headers=["Content-Disposition"]
 )
 
+# JWT Configuration
+app.config["JWT_SECRET_KEY"] = "lasallecares-jwt-secret-key-2026"
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=24)
+jwt = JWTManager(app)
+
 def setup_db():
     """Initialize the database and create superadmin if needed."""
     admin_password = get_env_var('ADMIN_PASSWORD', 'admin1234')
@@ -56,20 +63,43 @@ def test():
 # Auth and User Endpoints
 # =========================
 
-@app.route('/api/auth', methods=['GET'])
+@app.route('/api/auth', methods=['POST'])
 def authenticate_user():
-    """Authenticate a user."""
-    username = request.args.get('username')
-    password = request.args.get('password')
+    """Authenticate a user and return a JWT access token."""
+    data = request.get_json()
+    if not data:
+        abort(400, description="Missing JSON body")
+    username = data.get('username')
+    password = data.get('password')
     if not username or not password:
         abort(400, description="Missing username or password")
     password_hash = hashlib.sha256(password.encode()).hexdigest()
     user = authenticate(username, password_hash)
     if user:
-        return jsonify({'message': 'Authentication successful', 'user': user}), 200
+        additional_claims = {
+            "id": user["id"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"],
+            "user_type": user["user_type"]
+        }
+        access_token = create_access_token(identity=username, additional_claims=additional_claims)
+        return jsonify({'message': 'Authentication successful', 'access_token': access_token, 'user': user}), 200
     return jsonify({'message': 'Authentication failed'}), 401
 
+@app.route('/api/signup', methods=['POST'])
+def signup_user():
+    """Public signup endpoint — always creates a 'viewer' account."""
+    data = request.get_json()
+    required_fields = ['username', 'password', 'first_name', 'last_name']
+    if not all(data.get(field) for field in required_fields):
+        abort(400, description="Missing required fields")
+    password_hash = hashlib.sha256(data['password'].encode()).hexdigest()
+    if insert_user(data['username'], password_hash, data['first_name'], data['last_name'], 'viewer'):
+        return jsonify({'message': 'User created successfully'}), 200
+    return jsonify({'message': 'User creation failed'}), 500
+
 @app.route('/api/users', methods=['GET','POST'])
+@jwt_required()
 def create_user():
     if request.method == 'POST':
         data = request.get_json()
@@ -87,6 +117,7 @@ def create_user():
         return jsonify({'users': users}), 200
 
 @app.route('/api/users/<string:id>', methods=['DELETE'])
+@jwt_required()
 def delete_user_by_id(id):
     """Delete a user by ID."""
     if delete_user(id):
@@ -98,15 +129,15 @@ def delete_user_by_id(id):
 # =========================
 
 @app.route('/api/data', methods=['GET'])
+@jwt_required()
 def get_data():
     """Get user records."""
-    user = request.args.get('username')
-    if not user:
-        abort(400, description="Missing username")
-    records = get_user_records(user)
+    username = get_jwt_identity()
+    records = get_user_records(username)
     return jsonify({'records': records}), 200
 
 @app.route('/api/data/<string:type>/<string:uuid>', methods=['GET'])
+@jwt_required()
 def get_data_by_uuid(type, uuid):
     """Get uploaded result by UUID and type."""
     result = get_uploaded_result_by_uuid(uuid, type)
@@ -115,6 +146,7 @@ def get_data_by_uuid(type, uuid):
     return jsonify(result), 200
 
 @app.route('/api/data/<string:uuid>', methods=['DELETE'])
+@jwt_required()
 def delete_data_by_uuid(uuid):
     """Delete a record by UUID."""
     if delete_record(uuid):
@@ -122,6 +154,7 @@ def delete_data_by_uuid(uuid):
     return jsonify({'message': 'Record deletion failed'}), 500
 
 @app.route('/api/student/data/<string:uuid>/<string:form_type>/<string:name>', methods=['GET'])
+@jwt_required()
 def get_student_data_by_name(uuid, form_type, name):
     """Get student data by UUID, form type, and name."""
     result = get_student_data_by_uuid_and_name(uuid, name, form_type)
@@ -130,6 +163,7 @@ def get_student_data_by_name(uuid, form_type, name):
     return jsonify(result), 200
 
 @app.route('/api/student/data/<string:uuid>/<string:form_type>/<string:name>/<string:cluster>', methods=['PUT'])
+@jwt_required()
 def update_student_cluster_by_name(uuid, name, form_type, cluster):
     """Update student cluster assignment."""
     if update_student_cluster(uuid, name, cluster, form_type):
@@ -137,6 +171,7 @@ def update_student_cluster_by_name(uuid, name, form_type, cluster):
     return jsonify({'message': 'Student cluster update failed'}), 500
 
 @app.route('/api/answer_summary', methods=['GET'])
+@jwt_required()
 def get_answer_summary():
     """Get answer summary with optional filters."""
     uuid = request.args.get('uuid')
@@ -148,6 +183,7 @@ def get_answer_summary():
     return jsonify(summary), 200
 
 @app.route('/api/data', methods=['POST'])
+@jwt_required()
 def fetch_data():
     """Upload and process a CSV file."""
     if 'file' not in request.files:
@@ -161,9 +197,7 @@ def fetch_data():
     uuid = str(uuid4())
     record_name = request.form.get('datasetName')
     form_type = request.form.get('kindOfData')
-    user = request.form.get('user')
-    if not user:
-        abort(400, description='User not found')
+    user = get_jwt_identity()
 
     try:
         file_path = upload_file(file, uuid, form_type)
@@ -227,6 +261,7 @@ def fetch_data():
 
 # Updated download endpoint to use student_data folder instead of persisted/student_data
 @app.route('/api/download/<string:type>/<string:uuid>', methods=['GET'])
+@jwt_required()
 def download_results(type, uuid):
     """Download results file as JSON."""
     # build a safe path to the csv file
