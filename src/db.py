@@ -332,3 +332,20 @@ def update_student_cluster(uuid, name, cluster, form_type):
     except Exception as e:
         print("Error:", e)
         return False
+
+def update_student_risk_level(uuid, name, risk_level, form_type):
+    try:
+        file_path = os.path.join('persisted', 'student_data', form_type, f'{uuid}.csv')
+        df = pd.read_csv(file_path)
+        search_col = 'StudentNumber'
+        if search_col not in df.columns:
+            search_col = 'Name'
+        df[search_col] = df[search_col].astype(str)
+        student_match = df[search_col] == str(name)
+        df.loc[student_match, 'RiskRating'] = risk_level
+        df.loc[student_match, 'RiskConfidence'] = 1.0
+        df.to_csv(file_path, index=False)
+        return True
+    except Exception as e:
+        print("Error:", e)
+        return False

@@ -14,7 +14,8 @@ from src.process import (
 from src.db import (
     get_student_data_by_uuid_and_name, create_db, get_db_connection, close_db_connection,
     authenticate, insert_user, insert_result_record, get_user_records, delete_record,
-    test_db_connection, get_all_users, delete_user, update_student_cluster
+    test_db_connection, get_all_users, delete_user, update_student_cluster,
+    update_student_risk_level
 )
 from src.classification import (
     predict_risk_rating
@@ -169,6 +170,19 @@ def update_student_cluster_by_name(uuid, name, form_type, cluster):
     if update_student_cluster(uuid, name, cluster, form_type):
         return jsonify({'message': 'Student cluster updated successfully'}), 200
     return jsonify({'message': 'Student cluster update failed'}), 500
+
+@app.route('/api/student/data/<string:uuid>/<string:form_type>/<string:name>/risk/<string:risk_level>', methods=['PUT'])
+@jwt_required()
+def update_student_risk_by_name(uuid, name, form_type, risk_level):
+    """Update student risk level assignment."""
+    allowed_levels = {"low": "Low", "medium": "Medium", "high": "High"}
+    normalized = allowed_levels.get(risk_level.strip().lower())
+    if not normalized:
+        return jsonify({'message': 'Invalid risk level. Allowed values: Low, Medium, High'}), 400
+
+    if update_student_risk_level(uuid, name, normalized, form_type):
+        return jsonify({'message': 'Student risk level updated successfully'}), 200
+    return jsonify({'message': 'Student risk level update failed'}), 500
 
 @app.route('/api/answer_summary', methods=['GET'])
 @jwt_required()
